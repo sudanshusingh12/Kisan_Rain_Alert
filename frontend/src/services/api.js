@@ -38,6 +38,7 @@ export const api = {
   createFarm: (payload) => fetchApi('/farms', { method: 'POST', body: JSON.stringify(payload) }),
   deleteFarm: (farmId, userId) => fetchApi(`/farms/${farmId}${userId ? `?user_id=${userId}` : ''}`, { method: 'DELETE' }),
   getFarmWeather: (farmId, lat, lon) => fetchApi(`/farms/${farmId}/weather?lat=${lat}&lon=${lon}`),
+  getFarmForecast: (farmId, lat, lon) => fetchApi(`/farms/${farmId}/forecast?lat=${lat}&lon=${lon}`),
 
   // Alerts & Monitoring
   getAlerts: (userId) => fetchApi(`/alerts${userId ? `?user_id=${userId}` : ''}`),

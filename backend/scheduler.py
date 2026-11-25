@@ -4,6 +4,7 @@ Periodically checks registered farms, analyzes precipitation against determinist
 and triggers farmer notifications.
 """
 
+import os
 import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from config import Config

@@ -3,6 +3,7 @@ Kisan Rain Alert - Notification Dispatch Service
 Handles automated Fast2SMS (India) and Gmail SMTP alerts with delivery logging, error handling, and test simulation.
 """
 
+import os
 import smtplib
 import logging
 from email.mime.text import MIMEText
@@ -142,6 +143,9 @@ class NotificationService:
             msg["From"] = f"Kisan Rain Alert <{Config.SMTP_EMAIL}>"
             msg["To"] = to_email
 
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:5000").rstrip("/")
+            radar_url = f"{base_url}/alerts?farm_id={farm.get('id')}"
+
             text_content = (
                 f"KISAN RAIN ALERT - FARM ADVISORY\n\n"
                 f"Farm Name: {farm.get('farm_name')}\n"
@@ -150,7 +154,7 @@ class NotificationService:
                 f"Precipitation Rate: {alert.get('precipitation_rate')} mm/h\n"
                 f"Observation: {alert.get('alert_reason')}\n\n"
                 f"Actionable Advice: Please protect harvested produce, tarp open threshing floors, and pause pesticide applications.\n\n"
-                f"Track live radar at: http://localhost:5000/alerts.html?farm_id={farm.get('id')}\n"
+                f"Track live radar at: {radar_url}\n"
             )
 
             html_content = f"""
@@ -172,7 +176,7 @@ class NotificationService:
                         <tr><td style="padding: 8px 0; color: #94A3B8;">Rule Explanation:</td><td style="padding: 8px 0; color: #CBD5E1;">{alert.get('alert_reason')}</td></tr>
                     </table>
                     <div style="text-align: center; margin-top: 24px;">
-                        <a href="http://localhost:5000/alerts.html?farm_id={farm.get('id')}" style="background-color: #2563EB; color: #FFFFFF; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 999px; display: inline-block;">
+                        <a href="{radar_url}" style="background-color: #2563EB; color: #FFFFFF; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 999px; display: inline-block;">
                             View Live Rain Radar →
                         </a>
                     </div>

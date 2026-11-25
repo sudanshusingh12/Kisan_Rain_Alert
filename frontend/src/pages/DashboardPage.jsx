@@ -73,7 +73,7 @@ export default function DashboardPage() {
       <div style={{
         background: 'linear-gradient(135deg, #05241B 0%, #083D2E 50%, #0E5C46 100%)',
         borderRadius: 22,
-        padding: '2.25rem 2.5rem',
+        padding: 'clamp(1.25rem, 4vw, 2.25rem) clamp(1.15rem, 4vw, 2.5rem)',
         marginBottom: '2.5rem',
         color: '#FFFFFF',
         boxShadow: '0 16px 36px -8px rgba(5, 36, 27, 0.35)',
@@ -225,7 +225,7 @@ export default function DashboardPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', marginTop: 14, fontSize: '0.975rem', color: '#78350F' }}>
                   <span>Precipitation Rate: <strong>{simulatedAlert.precipitation_rate || 4.8} mm/h</strong></span>
                   <span>•</span>
-                  <span>Observation: <strong>Reflectivity Core SW</strong></span>
+                  <span>Gate: <strong>≥70% Probability</strong></span>
                   <span>•</span>
                   <span>Email Advisory: <strong style={{ color: simulatedAlert.email_status?.startsWith('delivered') ? '#047857' : '#2563EB' }}>
                     {simulatedAlert.email_status?.startsWith('delivered')
@@ -317,7 +317,7 @@ export default function DashboardPage() {
             {alerts.length}
           </div>
           <div style={{ fontSize: '1.025rem', color: '#B45309', marginTop: '0.45rem', fontWeight: 600 }}>
-            Threshold triggers in last 24h
+            Threshold triggers in last 7 days
           </div>
         </div>
 
@@ -388,7 +388,7 @@ export default function DashboardPage() {
             </Link>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '1.5rem' }}>
             {farms.map((farm) => (
               <div
                 key={farm.id}
@@ -406,7 +406,7 @@ export default function DashboardPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.15rem' }}>
                     <div>
-                      <h3 style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--forest-950)' }}>{farm.name}</h3>
+                      <h3 style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--forest-950)' }}>{farm.farm_name || farm.name}</h3>
                       <p style={{ fontSize: '1.05rem', color: 'var(--slate-600)', marginTop: 4 }}>
                         Village: <strong style={{ color: 'var(--slate-800)' }}>{farm.village || 'Rampur'}</strong>
                       </p>
@@ -427,7 +427,7 @@ export default function DashboardPage() {
                   }}>
                     <div>
                       <span style={{ color: 'var(--slate-500)', display: 'block', fontSize: '0.85rem', fontWeight: 700 }}>Field Area</span>
-                      <strong style={{ color: 'var(--slate-900)', fontSize: '1.15rem' }}>{farm.area_acres || 1} Acres</strong>
+                      <strong style={{ color: 'var(--slate-900)', fontSize: '1.15rem' }}>{farm.farm_size_acres || farm.area_acres || 1} Acres</strong>
                     </div>
                     <div>
                       <span style={{ color: 'var(--slate-500)', display: 'block', fontSize: '0.85rem', fontWeight: 700 }}>Coordinates</span>
@@ -451,6 +451,50 @@ export default function DashboardPage() {
                     <span>View Doppler Radar</span>
                   </Link>
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Rainfall Alerts Activity Feed */}
+      <div className="card" style={{ padding: '1.75rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--slate-200)', paddingBottom: '1rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--forest-950)' }}>
+              Recent Alert Triggers
+            </h2>
+            <p style={{ fontSize: '0.95rem', color: 'var(--slate-600)', marginTop: 2 }}>
+              Latest deterministic advisories evaluated across your fields
+            </p>
+          </div>
+          <Link to="/notifications" style={{ fontSize: '0.975rem', color: 'var(--forest-700)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>View Full Audit Log</span>
+            <ArrowRight size={17} />
+          </Link>
+        </div>
+
+        {alerts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem 1rem', background: 'var(--slate-50)', borderRadius: 14, border: '1px dashed var(--slate-300)' }}>
+            <p style={{ color: 'var(--slate-700)', fontWeight: 700, fontSize: '1rem' }}>All clear — no rain alerts triggered recently.</p>
+            <p style={{ color: 'var(--slate-500)', fontSize: '0.9rem', marginTop: 4 }}>Click "Simulate IMD Alert" above to preview the end-to-end alert pipeline.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {alerts.slice(0, 4).map((a) => (
+              <div key={a.id} style={{ padding: '1rem 1.25rem', borderRadius: 14, border: '1px solid var(--slate-200)', background: '#FFFFFF', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: 4 }}>
+                    <span className="badge badge-amber" style={{ fontSize: '0.8rem', padding: '0.25rem 0.7rem' }}>{a.rainfall_category || 'Rain Alert'}</span>
+                    {a.precipitation_rate != null && (
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--slate-700)' }}>{a.precipitation_rate} mm/h</span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '0.95rem', color: 'var(--slate-800)', lineHeight: 1.5 }}>{a.alert_message}</p>
+                </div>
+                <span style={{ fontSize: '0.825rem', color: 'var(--slate-500)', fontWeight: 600 }}>
+                  {new Date(a.created_at || Date.now()).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </span>
               </div>
             ))}
           </div>

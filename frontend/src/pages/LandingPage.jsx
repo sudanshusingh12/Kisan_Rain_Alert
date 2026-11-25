@@ -68,7 +68,7 @@ export default function LandingPage() {
                 <CheckCircle2 size={20} color="var(--forest-600)" /> Esri Satellite Field Zoom
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                <CheckCircle2 size={20} color="var(--forest-600)" /> Direct SMS via Fast2SMS
+                <CheckCircle2 size={20} color="var(--forest-600)" /> Free Gmail Push Alerts
               </div>
             </div>
           </div>

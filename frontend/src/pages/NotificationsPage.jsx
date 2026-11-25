@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, Save, Smartphone, MessageSquare, ShieldAlert, Clock, Loader2, CheckCircle2 } from 'lucide-react';
+import { Bell, Save, Smartphone, Mail, ShieldAlert, Clock, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
 export default function NotificationsPage() {
   const { currentUser } = useAuth();
   const [preferences, setPreferences] = useState({
+    email_enabled: true,
     sms_enabled: false,
-    whatsapp_enabled: true,
-    min_severity: 'moderate',
-    language: 'English'
+    min_rainfall_intensity: 'Light Rain'
   });
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,10 +26,9 @@ export default function NotificationsPage() {
 
         if (prefRes.preferences) {
           setPreferences({
+            email_enabled: prefRes.preferences.email_enabled ?? true,
             sms_enabled: prefRes.preferences.sms_enabled ?? false,
-            whatsapp_enabled: prefRes.preferences.whatsapp_enabled ?? true,
-            min_severity: prefRes.preferences.min_severity || 'moderate',
-            language: prefRes.preferences.language || 'English'
+            min_rainfall_intensity: prefRes.preferences.min_rainfall_intensity || 'Light Rain'
           });
         }
         setNotifications(notifRes.logs || notifRes.notifications || []);
@@ -75,7 +73,7 @@ export default function NotificationsPage() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '2rem' }}>
         {/* Preferences Form */}
         <div className="card" style={{ padding: '1.85rem', borderRadius: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1.5rem' }}>
@@ -96,60 +94,44 @@ export default function NotificationsPage() {
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', cursor: 'pointer', padding: '0.85rem 1rem', background: 'var(--slate-50)', borderRadius: 12, border: '1px solid var(--slate-200)' }}>
                 <input
                   type="checkbox"
-                  checked={preferences.sms_enabled}
-                  onChange={(e) => setPreferences({ ...preferences, sms_enabled: e.target.checked })}
+                  checked={preferences.email_enabled}
+                  onChange={(e) => setPreferences({ ...preferences, email_enabled: e.target.checked })}
                   style={{ width: 20, height: 20, accentColor: 'var(--forest-700)' }}
                 />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.025rem', color: 'var(--slate-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Smartphone size={18} color="var(--forest-700)" /> SMS Text Alerts (Fast2SMS)
+                    <Mail size={18} color="#059669" /> Email Push Alerts (Gmail SMTP)
                   </div>
-                  <div style={{ fontSize: '0.9rem', color: 'var(--slate-600)', marginTop: 2 }}>Instant text delivery to {currentUser?.phone || 'registered mobile'}</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--slate-600)', marginTop: 2 }}>Free instant push advisories to {currentUser?.email || 'registered email'}</div>
                 </div>
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', cursor: 'pointer', padding: '0.85rem 1rem', background: 'var(--slate-50)', borderRadius: 12, border: '1px solid var(--slate-200)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', cursor: 'not-allowed', padding: '0.85rem 1rem', background: 'var(--slate-50)', borderRadius: 12, border: '1px solid var(--slate-200)', opacity: 0.65 }}>
                 <input
                   type="checkbox"
-                  checked={preferences.whatsapp_enabled}
-                  onChange={(e) => setPreferences({ ...preferences, whatsapp_enabled: e.target.checked })}
+                  checked={false}
+                  disabled
                   style={{ width: 20, height: 20, accentColor: 'var(--forest-700)' }}
                 />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.025rem', color: 'var(--slate-900)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <MessageSquare size={18} color="#059669" /> WhatsApp Messages
+                    <Smartphone size={18} color="var(--slate-500)" /> SMS Text Alerts (Disabled — Zero-Cost Mode)
                   </div>
-                  <div style={{ fontSize: '0.9rem', color: 'var(--slate-600)', marginTop: 2 }}>Rich advisory cards with radar map previews</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--slate-600)', marginTop: 2 }}>Paid SMS gateway is disabled to prevent carrier charges</div>
                 </div>
               </label>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Minimum Rainfall Severity to Trigger Alert</label>
+              <label className="form-label">Minimum Rainfall Intensity to Trigger Alert</label>
               <select
                 className="form-control"
-                value={preferences.min_severity}
-                onChange={(e) => setPreferences({ ...preferences, min_severity: e.target.value })}
+                value={preferences.min_rainfall_intensity}
+                onChange={(e) => setPreferences({ ...preferences, min_rainfall_intensity: e.target.value })}
               >
-                <option value="light">Light Rain (≥ 2.5 mm) & above</option>
-                <option value="moderate">Moderate Rain (≥ 15.6 mm) & above (Recommended)</option>
-                <option value="heavy">Heavy Rain (≥ 64.5 mm) only</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Preferred Advisory Language</label>
-              <select
-                className="form-control"
-                value={preferences.language}
-                onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
-              >
-                <option value="English">English</option>
-                <option value="Hindi">हिन्दी (Hindi)</option>
-                <option value="Punjabi">ਪੰਜਾਬੀ (Punjabi)</option>
-                <option value="Marathi">मराठी (Marathi)</option>
-                <option value="Gujarati">ગુજરાતી (Gujarati)</option>
-                <option value="Telugu">తెలుగు (Telugu)</option>
+                <option value="Light Rain">Light Rain (≥ 0.1 mm/h) &amp; above (Recommended)</option>
+                <option value="Moderate Rain">Moderate Rain (≥ 2.5 mm/h) &amp; above</option>
+                <option value="Heavy Rain">Heavy Rain (≥ 7.6 mm/h) only</option>
               </select>
             </div>
 
@@ -186,15 +168,15 @@ export default function NotificationsPage() {
               {notifications.map((n) => (
                 <div key={n.id} style={{ padding: '1.15rem', border: '1px solid var(--slate-200)', borderRadius: 14, background: '#FFFFFF', boxShadow: 'var(--card-shadow-sm)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                    <strong style={{ fontSize: '1.05rem', color: 'var(--forest-950)' }}>{n.title || 'Rainfall Advisory'}</strong>
-                    <span className="badge badge-amber" style={{ fontSize: '0.8rem' }}>{n.channel || 'SMS'}</span>
+                    <strong style={{ fontSize: '1.05rem', color: 'var(--forest-950)' }}>{n.title || n.recipient || 'Rainfall Advisory'}</strong>
+                    <span className="badge badge-amber" style={{ fontSize: '0.8rem' }}>{(n.channel || 'email').toUpperCase()}</span>
                   </div>
                   <p style={{ fontSize: '0.95rem', color: 'var(--slate-700)', marginBottom: 8, lineHeight: 1.5 }}>
                     {n.message}
                   </p>
                   <div style={{ fontSize: '0.85rem', color: 'var(--slate-500)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <span>Status: <strong style={{ color: 'var(--forest-700)' }}>{n.status || 'Delivered'}</strong></span>
-                    <span>{new Date(n.created_at || Date.now()).toLocaleString()}</span>
+                    <span>Status: <strong style={{ color: 'var(--forest-700)' }}>{n.delivery_status || n.status || 'Delivered'}</strong></span>
+                    <span>{new Date(n.sent_at || n.created_at || Date.now()).toLocaleString()}</span>
                   </div>
                 </div>
               ))}

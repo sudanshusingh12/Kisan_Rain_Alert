@@ -54,3 +54,24 @@ def test_safe_fallback():
     assert fallback["precipitation"] == 0.0
     assert "timeout" in fallback["error"]
 
+def test_current_hour_probability_matching():
+    """Verify current-hour probability is matched by timestamp rather than always index 0."""
+    provider = OpenMeteoAndRainViewerProvider()
+    sample_raw = {
+        "current": {
+            "temperature_2m": 30.0,
+            "relative_humidity_2m": 68.0,
+            "precipitation": 2.8,
+            "wind_speed_10m": 10.0,
+            "wind_direction_10m": 180,
+            "weather_code": 61,
+            "time": "2026-11-25T14:15"
+        },
+        "hourly": {
+            "time": ["2026-11-25T12:00", "2026-11-25T13:00", "2026-11-25T14:00"],
+            "precipitation_probability": [10, 25, 82]
+        }
+    }
+    norm = provider._validate_and_normalize(sample_raw, 20.0, 73.7)
+    assert norm["precipitation_probability"] == 82
+

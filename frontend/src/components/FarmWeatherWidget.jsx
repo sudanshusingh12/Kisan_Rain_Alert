@@ -197,12 +197,7 @@ export default function FarmWeatherWidget({ farm }) {
       </div>
 
       {/* Microclimate 4-Stat Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '0.65rem',
-        marginBottom: '1rem'
-      }}>
+      <div className="weather-stats-grid">
         
         {/* Humidity - Aesthetic Sky Tint */}
         <div style={{

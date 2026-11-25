@@ -130,4 +130,35 @@ def test_user_registration_and_authentication(client):
     assert profile_res.status_code == 200
     assert profile_res.get_json()["profile"]["email"] == test_email
 
+def test_demo_login_and_preferences_roundtrip(client):
+    """Demo login returns seeded farmer profile and preferences round-trip cleanly."""
+    login_res = client.post("/api/login", json={
+        "email": "farmer.rajesh@kisanrain.org",
+        "password": "demo1234"
+    })
+    assert login_res.status_code == 200
+    user = login_res.get_json()["user"]
+    assert user["id"] == "a0000000-0000-0000-0000-000000000001"
+
+    farms_res = client.get(f"/api/farms?user_id={user['id']}")
+    assert farms_res.status_code == 200
+    assert len(farms_res.get_json()["farms"]) >= 1
+
+    put_res = client.put("/api/notification-preferences", json={
+        "user_id": user["id"],
+        "email_enabled": True,
+        "sms_enabled": False,
+        "min_rainfall_intensity": "Moderate Rain"
+    })
+    assert put_res.status_code == 200
+    assert put_res.get_json()["preferences"]["min_rainfall_intensity"] == "Moderate Rain"
+
+def test_simulate_alert_without_smtp_email_no_nameerror(client, monkeypatch):
+    """Ensure fallback email lookup does not raise NameError when SMTP_EMAIL is empty."""
+    from config import Config
+    monkeypatch.setattr(Config, "SMTP_EMAIL", "")
+    res = client.post("/api/alerts/test", json={"user_id": "nonexistent-user-id"})
+    assert res.status_code == 200
+    assert "alert" in res.get_json()
+
 

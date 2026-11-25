@@ -257,12 +257,18 @@ class Database:
                 if user_id:
                     query = query.eq("user_id", user_id)
                 res = query.execute()
-                if res.data:
-                    return res.data
-                # If cloud database is empty, fallback to demo farms for initial preview/tests
-                if not user_id:
-                    return [f for f in _LOCAL_FARMS if f.get("is_active", True)]
-                return []
+                supa_farms = res.data or []
+                # Merge any local-only farms for this user (e.g., created during brief Supabase outage)
+                supa_ids = {f.get("id") for f in supa_farms}
+                local_matches = [
+                    f for f in _LOCAL_FARMS
+                    if f.get("is_active", True)
+                    and f.get("id") not in supa_ids
+                    and (not user_id or f.get("user_id") == user_id)
+                ]
+                if user_id:
+                    return supa_farms + local_matches
+                return supa_farms if supa_farms else local_matches
             except Exception as e:
                 logger.error(f"Supabase get_farms error: {e}")
 
@@ -397,7 +403,7 @@ class Database:
                 valid_cols = {"id", "alert_id", "user_id", "channel", "recipient", "delivery_status", "provider_message_id", "error_message", "sent_at"}
                 db_payload = {k: v for k, v in log_data.items() if k in valid_cols and v is not None}
                 if "user_id" not in db_payload or not db_payload["user_id"]:
-                    db_payload["user_id"] = "7e634c45-9ea3-403a-b021-674ca403e6f2"
+                    db_payload["user_id"] = DEMO_USER_ID
                 res = supabase_client.table("notification_logs").insert(db_payload).execute()
                 if res.data:
                     return res.data[0]

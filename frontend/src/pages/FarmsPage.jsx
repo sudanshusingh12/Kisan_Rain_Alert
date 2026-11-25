@@ -241,13 +241,13 @@ export default function FarmsPage() {
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '1.5rem' }}>
           {farms.map((farm) => (
             <div key={farm.id} className="card card-interactive" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '1.85rem', borderRadius: 18 }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.15rem' }}>
                   <div>
-                    <h3 style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--forest-950)' }}>{farm.name}</h3>
+                    <h3 style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--forest-950)' }}>{farm.farm_name || farm.name}</h3>
                     <p style={{ fontSize: '1.05rem', color: 'var(--slate-600)', marginTop: 4 }}>
                       Village: <strong style={{ color: 'var(--slate-800)' }}>{farm.village || 'Rampur'}</strong>
                     </p>
@@ -261,7 +261,7 @@ export default function FarmsPage() {
                 <div style={{ background: 'var(--slate-50)', padding: '1.15rem 1.35rem', borderRadius: 14, margin: '1rem 0 0.5rem', border: '1px solid var(--slate-200)', fontSize: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                     <span style={{ color: 'var(--slate-500)', fontWeight: 700 }}>Field Area:</span>
-                    <strong style={{ color: 'var(--slate-900)', fontSize: '1.15rem' }}>{farm.area_acres || 1} Acres</strong>
+                    <strong style={{ color: 'var(--slate-900)', fontSize: '1.15rem' }}>{farm.farm_size_acres || farm.area_acres || 1} Acres</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: 'var(--slate-500)', fontWeight: 700 }}>Coordinates:</span>

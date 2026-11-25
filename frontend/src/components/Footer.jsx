@@ -44,7 +44,7 @@ export default function Footer() {
             </div>
 
             <p style={{ color: '#94A3B8', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.25rem' }}>
-              Autonomous meteorological intelligence and live Doppler radar monitoring designed for Indian farmers. Real-time SMS alerts protect crops from unseasonal rains.
+              Autonomous meteorological intelligence and live Doppler radar monitoring designed for Indian farmers. Real-time push alerts protect crops from unseasonal rains.
             </p>
 
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.35rem 0.85rem', borderRadius: 9999, backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', color: '#6EE7B7', fontSize: '0.825rem', fontWeight: 700 }}>
@@ -76,7 +76,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link to="/notifications" style={{ color: '#CBD5E1', transition: 'color 0.15s ease' }} onMouseEnter={(e) => e.target.style.color = '#34D399'} onMouseLeave={(e) => e.target.style.color = '#CBD5E1'}>
-                  • SMS Logs & Alert Thresholds
+                  • Alert Logs & Thresholds
                 </Link>
               </li>
             </ul>

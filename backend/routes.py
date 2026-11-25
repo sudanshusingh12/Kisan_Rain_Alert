@@ -3,6 +3,7 @@ Kisan Rain Alert - REST API Endpoints
 Provides clean, structured JSON routes for farm management, weather, alerts, and notification preferences.
 """
 
+import os
 import uuid
 import logging
 from datetime import datetime, timezone

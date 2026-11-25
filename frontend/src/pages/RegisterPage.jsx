@@ -50,26 +50,26 @@ export default function RegisterPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '1.5rem',
-      backgroundColor: 'var(--slate-50)'
+      background: 'radial-gradient(ellipse at 15% 10%, rgba(16, 185, 129, 0.14) 0%, transparent 50%), radial-gradient(ellipse at 85% 90%, rgba(2, 132, 199, 0.12) 0%, transparent 50%), #F8FAFC'
     }}>
       <div style={{ width: '100%', maxWidth: 460 }}>
         {/* Brand header */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
             <div className="brand-icon-box">
               <CloudRain size={24} />
             </div>
-            <span style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--forest-900)' }}>
+            <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--forest-900)' }}>
               Kisan Rain Alert
             </span>
           </Link>
-          <p style={{ color: 'var(--slate-500)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+          <p style={{ color: 'var(--slate-600)', fontSize: '0.925rem', marginTop: '0.5rem', fontWeight: 500 }}>
             Register your farmer profile for hyperlocal weather advisories
           </p>
         </div>
 
         {/* Card */}
-        <div className="card" style={{ padding: '2rem' }}>
+        <div className="card glass-card" style={{ padding: '2rem', borderRadius: 20 }}>
           {error && (
             <div style={{
               display: 'flex',

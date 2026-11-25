@@ -123,9 +123,18 @@ class OpenMeteoAndRainViewerProvider(BaseWeatherProvider):
         wind_dir = int(current.get("wind_direction_10m", 0) or 0)
         weather_code = int(current.get("weather_code", 0) or 0)
 
-        # Precipitation probability for the current hour
+        # Precipitation probability for the current hour (match current time prefix YYYY-MM-DDTHH)
         prob_list = hourly.get("precipitation_probability", [])
-        prob = int(prob_list[0]) if prob_list else 0
+        hourly_times = hourly.get("time", [])
+        current_time_str = str(current.get("time", ""))
+        prob_idx = 0
+        if current_time_str and hourly_times:
+            current_hour_prefix = current_time_str[:13]
+            for idx, h_time in enumerate(hourly_times):
+                if str(h_time).startswith(current_hour_prefix):
+                    prob_idx = idx
+                    break
+        prob = int(prob_list[prob_idx]) if prob_idx < len(prob_list) and prob_list[prob_idx] is not None else 0
 
         # WMO Weathercode interpretation
         condition_text = self._interpret_wmo_code(weather_code)

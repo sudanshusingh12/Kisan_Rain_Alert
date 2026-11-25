@@ -52,7 +52,7 @@ export default function RadarAlertsPage() {
           // Fallback demo farm
           setSelectedFarm({
             id: 'default',
-            name: 'Central Agricultural Zone',
+            farm_name: 'Central Agricultural Zone',
             village: 'Rampur',
             crop_type: 'Paddy',
             latitude: 28.6139,
@@ -76,10 +76,16 @@ export default function RadarAlertsPage() {
       const lat = parseFloat(selectedFarm.latitude) || 28.6139;
       const lon = parseFloat(selectedFarm.longitude) || 77.2090;
 
-      // 1. Fetch live Open-Meteo weather
+      // 1. Fetch live Open-Meteo weather & 48h hourly forecast in parallel
       try {
-        const weather = await api.getFarmWeather(selectedFarm.id, lat, lon);
-        setWeatherData(weather);
+        const [weather, forecast] = await Promise.all([
+          api.getFarmWeather(selectedFarm.id, lat, lon),
+          api.getFarmForecast(selectedFarm.id, lat, lon).catch(() => null)
+        ]);
+        setWeatherData({
+          ...weather,
+          hourly: forecast?.hourly || weather?.hourly || null
+        });
       } catch (err) {
         console.warn('Weather fetch error:', err);
       }
@@ -133,7 +139,7 @@ export default function RadarAlertsPage() {
       // Farm Marker
       const marker = L.marker([initialLat, initialLon])
         .addTo(map)
-        .bindPopup(`<b>${selectedFarm?.name || 'Selected Farm'}</b><br>Village: ${selectedFarm?.village || 'Rampur'}`);
+        .bindPopup(`<b>${selectedFarm?.farm_name || selectedFarm?.name || 'Selected Farm'}</b><br>Village: ${selectedFarm?.village || 'Rampur'}`);
       markerRef.current = marker;
     } else if (selectedFarm) {
       const newLat = parseFloat(selectedFarm.latitude) || 28.6139;
@@ -141,7 +147,7 @@ export default function RadarAlertsPage() {
       mapRef.current.setView([newLat, newLon], 9);
       if (markerRef.current) {
         markerRef.current.setLatLng([newLat, newLon]);
-        markerRef.current.getPopup().setContent(`<b>${selectedFarm.name}</b><br>Village: ${selectedFarm.village || 'Rampur'}`);
+        markerRef.current.getPopup().setContent(`<b>${selectedFarm.farm_name || selectedFarm.name || 'Selected Farm'}</b><br>Village: ${selectedFarm.village || 'Rampur'}`);
       }
     }
   }, [selectedFarm]);
@@ -196,46 +202,77 @@ export default function RadarAlertsPage() {
   }) : [];
 
   const hourlyPrecip = weatherData?.hourly?.precipitation ? weatherData.hourly.precipitation.slice(0, 24) : [];
+  const hourlyProb = weatherData?.hourly?.precipitation_probability ? weatherData.hourly.precipitation_probability.slice(0, 24) : [];
 
   const chartData = {
     labels: hourlyTimes,
     datasets: [
       {
-        label: 'Precipitation (mm/hour)',
+        label: 'Precipitation (mm/h)',
         data: hourlyPrecip,
         borderColor: '#0284C7',
-        backgroundColor: 'rgba(2, 132, 199, 0.25)',
+        backgroundColor: 'rgba(2, 132, 199, 0.22)',
         borderWidth: 2.5,
         fill: true,
         tension: 0.4,
         pointRadius: 3,
         pointHoverRadius: 6,
-        pointBackgroundColor: '#0284C7'
-      }
+        pointBackgroundColor: '#0284C7',
+        yAxisID: 'y'
+      },
+      ...(hourlyProb.length > 0 ? [{
+        label: 'Rain Probability (%)',
+        data: hourlyProb,
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        fill: false,
+        tension: 0.35,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#10B981',
+        yAxisID: 'y1'
+      }] : [])
     ]
   };
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: false },
+      legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 12, weight: 'bold' } } },
       tooltip: {
         backgroundColor: '#0F172A',
         titleFont: { size: 12, weight: 'bold' },
         bodyFont: { size: 12 },
         padding: 10,
         callbacks: {
-          label: (context) => ` Predicted Rain: ${context.parsed.y} mm/h`
+          label: (context) => context.datasetIndex === 0
+            ? ` Rain Rate: ${context.parsed.y} mm/h`
+            : ` Probability: ${context.parsed.y}% (Alert Gate: 70%)`
         }
       }
     },
     scales: {
       y: {
+        type: 'linear',
+        position: 'left',
         beginAtZero: true,
-        title: { display: true, text: 'Precipitation (mm/h)', color: '#64748B', font: { weight: 'bold' } },
+        title: { display: true, text: 'Rain (mm/h)', color: '#0284C7', font: { weight: 'bold' } },
         grid: { color: '#F1F5F9' }
       },
+      ...(hourlyProb.length > 0 ? {
+        y1: {
+          type: 'linear',
+          position: 'right',
+          min: 0,
+          max: 100,
+          title: { display: true, text: 'Probability (%)', color: '#059669', font: { weight: 'bold' } },
+          grid: { drawOnChartArea: false }
+        }
+      } : {}),
       x: {
         grid: { display: false },
         ticks: { maxTicksLimit: 8, color: '#64748B' }
@@ -276,7 +313,7 @@ export default function RadarAlertsPage() {
               }}
             >
               {farms.map((f) => (
-                <option key={f.id} value={f.id}>{f.name} ({f.village})</option>
+                <option key={f.id} value={f.id}>{f.farm_name || f.name} ({f.village})</option>
               ))}
             </select>
           </div>
@@ -284,7 +321,7 @@ export default function RadarAlertsPage() {
       </div>
 
       {/* Real-time Weather Observation Chips */}
-      {weatherData?.current && (
+      {weatherData && (
         <div className="grid-cards" style={{ marginBottom: '2.5rem' }}>
           
           <div className="card card-interactive" style={{ padding: '1.5rem', borderLeft: '5px solid #EA580C', borderRadius: 16 }}>
@@ -292,10 +329,10 @@ export default function RadarAlertsPage() {
               <Thermometer size={18} color="#EA580C" /> Temperature
             </div>
             <div style={{ fontSize: '2.1rem', fontWeight: 900, color: 'var(--forest-950)', marginTop: 6 }}>
-              {weatherData.current.temperature_2m}°C
+              {weatherData.temperature ?? '--'}°C
             </div>
             <div style={{ fontSize: '0.925rem', color: 'var(--slate-500)', marginTop: 4 }}>
-              Relative Humidity: <strong style={{ color: 'var(--slate-800)' }}>{weatherData.current.relative_humidity_2m}%</strong>
+              Relative Humidity: <strong style={{ color: 'var(--slate-800)' }}>{weatherData.humidity ?? '--'}%</strong>
             </div>
           </div>
 
@@ -304,10 +341,10 @@ export default function RadarAlertsPage() {
               <Wind size={18} color="#0284C7" /> Surface Wind
             </div>
             <div style={{ fontSize: '2.1rem', fontWeight: 900, color: 'var(--forest-950)', marginTop: 6 }}>
-              {weatherData.current.wind_speed_10m} km/h
+              {weatherData.wind_speed ?? '--'} km/h
             </div>
             <div style={{ fontSize: '0.925rem', color: 'var(--slate-500)', marginTop: 4 }}>
-              Direction: <strong style={{ color: 'var(--slate-800)' }}>{weatherData.current.wind_direction_10m || 180}° (SW gusts)</strong>
+              Direction: <strong style={{ color: 'var(--slate-800)' }}>{weatherData.wind_direction ?? 180}°</strong>
             </div>
           </div>
 
@@ -316,22 +353,22 @@ export default function RadarAlertsPage() {
               <Droplets size={18} color="#0D9488" /> Rain Probability
             </div>
             <div style={{ fontSize: '2.1rem', fontWeight: 900, color: 'var(--forest-950)', marginTop: 6 }}>
-              {weatherData.current.precipitation_probability || 0}%
+              {weatherData.precipitation_probability ?? 0}%
             </div>
             <div style={{ fontSize: '0.925rem', color: 'var(--slate-500)', marginTop: 4 }}>
-              Upcoming 60-min window
+              Upcoming 60-min window (Gate: ≥70%)
             </div>
           </div>
 
           <div className="card card-interactive" style={{ padding: '1.5rem', borderLeft: '5px solid #10B981', borderRadius: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--slate-600)', fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              <ShieldCheck size={18} color="var(--forest-600)" /> IMD 24h Category
+              <ShieldCheck size={18} color="var(--forest-600)" /> Hourly Intensity
             </div>
             <div style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--forest-800)', marginTop: 8 }}>
-              {weatherData.imd_category || 'No Significant Rain'}
+              {weatherData.rainfall_category || 'No Rain'}
             </div>
             <div style={{ fontSize: '0.925rem', color: 'var(--slate-500)', marginTop: 4 }}>
-              Deterministic threshold check
+              Rate: <strong style={{ color: 'var(--slate-800)' }}>{weatherData.precipitation ?? 0} mm/h</strong>
             </div>
           </div>
 
@@ -378,8 +415,8 @@ export default function RadarAlertsPage() {
         <div style={{ position: 'relative' }}>
           <div ref={mapContainerRef} className="radar-map-container" />
 
-          {/* Compass & Distance HUD Badge */}
-          <div style={{
+          {/* Compass & Live Wind HUD Badge */}
+          <div className="radar-hud-badge" style={{
             position: 'absolute',
             bottom: 16,
             left: 16,
@@ -397,11 +434,13 @@ export default function RadarAlertsPage() {
             boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
           }}>
             <Compass size={14} color="#34D399" />
-            <span>SW ➔ NE VECTOR • 14 km/h</span>
+            <span>
+              WIND {weatherData?.wind_direction ?? '--'}° • {weatherData?.wind_speed ?? '--'} km/h
+            </span>
           </div>
 
           {/* Doppler Reflectivity Legend Pill */}
-          <div style={{
+          <div className="radar-legend-badge" style={{
             position: 'absolute',
             bottom: 16,
             right: 16,
@@ -456,7 +495,7 @@ export default function RadarAlertsPage() {
               Next 24-Hour Precipitation Forecast (mm)
             </h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--slate-500)', marginTop: 2 }}>
-              High-resolution hourly numerical weather prediction for {selectedFarm?.name || 'Selected Field'}
+              High-resolution hourly numerical weather prediction for {selectedFarm?.farm_name || selectedFarm?.name || 'Selected Field'}
             </p>
           </div>
           <span className="badge badge-blue">Open-Meteo High-Res</span>
@@ -485,26 +524,26 @@ export default function RadarAlertsPage() {
           Deterministic alert thresholds are strictly aligned with standard criteria formulated by the India Meteorological Department:
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.85rem', fontSize: '0.85rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '0.85rem', fontSize: '0.85rem' }}>
           <div style={{ padding: '0.75rem', background: 'var(--slate-50)', borderRadius: 8, border: '1px solid var(--slate-200)' }}>
-            <strong style={{ color: 'var(--slate-700)', display: 'block', marginBottom: 2 }}>Very Light Rain:</strong>
-            <span>0.1 – 2.4 mm / 24h</span>
+            <strong style={{ color: 'var(--slate-700)', display: 'block', marginBottom: 2 }}>No Rain:</strong>
+            <span>&lt; 0.1 mm / hour</span>
           </div>
           <div style={{ padding: '0.75rem', background: '#ECFDF5', borderRadius: 8, border: '1px solid var(--emerald-border)' }}>
             <strong style={{ color: 'var(--forest-700)', display: 'block', marginBottom: 2 }}>Light Rain:</strong>
-            <span>2.5 – 15.5 mm / 24h</span>
+            <span>0.1 – 2.4 mm / hour</span>
           </div>
           <div style={{ padding: '0.75rem', background: '#FFFBEB', borderRadius: 8, border: '1px solid var(--amber-border)' }}>
             <strong style={{ color: '#B45309', display: 'block', marginBottom: 2 }}>Moderate Rain:</strong>
-            <span>15.6 – 64.4 mm / 24h</span>
+            <span>2.5 – 7.5 mm / hour</span>
           </div>
           <div style={{ padding: '0.75rem', background: '#FEF2F2', borderRadius: 8, border: '1px solid var(--red-border)' }}>
             <strong style={{ color: '#B91C1C', display: 'block', marginBottom: 2 }}>Heavy Rain:</strong>
-            <span>64.5 – 115.5 mm / 24h</span>
+            <span>7.6 – 15.0 mm / hour</span>
           </div>
           <div style={{ padding: '0.75rem', background: '#450A0A', color: '#FFFFFF', borderRadius: 8 }}>
-            <strong style={{ color: '#FECACA', display: 'block', marginBottom: 2 }}>Very / Extremely Heavy:</strong>
-            <span>&gt;115.6 mm / 24h</span>
+            <strong style={{ color: '#FECACA', display: 'block', marginBottom: 2 }}>Very Heavy Rain:</strong>
+            <span>&gt; 15.0 mm / hour</span>
           </div>
         </div>
       </div>

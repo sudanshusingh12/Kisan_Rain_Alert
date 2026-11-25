@@ -786,7 +786,39 @@ button, input, select, textarea {
   gap: 1.45rem;
 }
 
+/* Microclimate 4-Stat Grid (4 cols desktop -> 2x2 mobile) */
+.weather-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
 @media (max-width: 640px) {
+  html {
+    font-size: 15.5px;
+  }
+
+  .weather-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+
+  .radar-hud-badge,
+  .radar-legend-badge {
+    font-size: 0.68rem !important;
+    padding: 0.35rem 0.55rem !important;
+    bottom: 10px !important;
+  }
+
+  .radar-hud-badge {
+    left: 10px !important;
+  }
+
+  .radar-legend-badge {
+    right: 10px !important;
+  }
+
   .grid-cards {
     grid-template-columns: 1fr;
     gap: 1.15rem;

@@ -56,10 +56,10 @@ export function AuthProvider({ children }) {
 
   const loginDemo = async () => {
     try {
-      // Try logging in with demo credentials against API first
+      // Try logging in with seeded demo credentials against API first
       const res = await api.login({
-        email: 'suresh@kisanrain.org',
-        password: 'DemoPassword123!'
+        email: 'farmer.rajesh@kisanrain.org',
+        password: 'demo1234'
       });
       if (res && res.user) {
         saveUserSession(res.user);
@@ -70,9 +70,9 @@ export function AuthProvider({ children }) {
     }
 
     const demoUser = {
-      id: '00000000-0000-0000-0000-000000000001',
-      full_name: 'Suresh Kumar (Demo Farmer)',
-      email: 'suresh@kisanrain.org',
+      id: 'a0000000-0000-0000-0000-000000000001',
+      full_name: 'Rajesh Kumar Patel',
+      email: 'farmer.rajesh@kisanrain.org',
       phone: '+919876543210'
     };
     saveUserSession(demoUser);
