@@ -114,7 +114,7 @@ class NotificationService:
 
     @classmethod
     def send_email(cls, to_email: str, alert: Dict[str, Any], farm: Dict[str, Any], user_id: Optional[str] = None) -> str:
-        """Send rainfall advisory email via Gmail SMTP, with graceful fallback."""
+        """Send rainfall advisory email via Brevo HTTPS API (preferred on cloud) or Gmail SMTP."""
         log_entry = {
             "alert_id": alert.get("id"),
             "user_id": user_id,
@@ -124,90 +124,132 @@ class NotificationService:
             "message": alert.get("alert_message", "")
         }
 
-        has_smtp = (
-            Config.SMTP_EMAIL and 
-            Config.SMTP_PASSWORD and 
-            "@" in Config.SMTP_EMAIL
-        )
+        brevo_key = (getattr(Config, "BREVO_API_KEY", "") or "").strip()
+        sender_email = (getattr(Config, "BREVO_SENDER_EMAIL", "") or Config.SMTP_EMAIL or "").strip()
+        has_brevo = bool(brevo_key and sender_email and "@" in sender_email)
+        has_smtp = bool(Config.SMTP_EMAIL and Config.SMTP_PASSWORD and "@" in Config.SMTP_EMAIL)
 
-        if not has_smtp:
-            logger.info(f"[SIMULATION] Gmail SMTP to {to_email} for farm {farm.get('farm_name')}")
+        if not has_brevo and not has_smtp:
+            logger.info(f"[SIMULATION] Email alert to {to_email} for farm {farm.get('farm_name')}")
             log_entry["delivery_status"] = "simulated"
             log_entry["provider_message_id"] = f"SIM-MAIL-{int(hash(to_email + farm.get('farm_name', ''))) & 0xffffffff:08x}"
             Database.log_notification(log_entry)
             return "simulated"
 
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = f"🌧️ Kisan Rain Alert: {alert.get('rainfall_category')} Detected at {farm.get('farm_name')}"
-            msg["From"] = f"Kisan Rain Alert <{Config.SMTP_EMAIL}>"
-            msg["To"] = to_email
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:5000").rstrip("/")
+        radar_url = f"{base_url}/alerts?farm_id={farm.get('id')}"
+        subject = f"🌧️ Kisan Rain Alert: {alert.get('rainfall_category')} Detected at {farm.get('farm_name')}"
 
-            base_url = os.getenv("APP_BASE_URL", "http://localhost:5000").rstrip("/")
-            radar_url = f"{base_url}/alerts?farm_id={farm.get('id')}"
+        text_content = (
+            f"KISAN RAIN ALERT - FARM ADVISORY\n\n"
+            f"Farm Name: {farm.get('farm_name')}\n"
+            f"Location: {farm.get('village', 'Farm Location')}\n"
+            f"Category: {alert.get('rainfall_category')}\n"
+            f"Precipitation Rate: {alert.get('precipitation_rate')} mm/h\n"
+            f"Observation: {alert.get('alert_reason')}\n\n"
+            f"Actionable Advice: Please protect harvested produce, tarp open threshing floors, and pause pesticide applications.\n\n"
+            f"Track live radar at: {radar_url}\n"
+        )
 
-            text_content = (
-                f"KISAN RAIN ALERT - FARM ADVISORY\n\n"
-                f"Farm Name: {farm.get('farm_name')}\n"
-                f"Location: {farm.get('village', 'Farm Location')}\n"
-                f"Category: {alert.get('rainfall_category')}\n"
-                f"Precipitation Rate: {alert.get('precipitation_rate')} mm/h\n"
-                f"Observation: {alert.get('alert_reason')}\n\n"
-                f"Actionable Advice: Please protect harvested produce, tarp open threshing floors, and pause pesticide applications.\n\n"
-                f"Track live radar at: {radar_url}\n"
-            )
-
-            html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #070B14; color: #E2E8F0; padding: 24px; margin: 0;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #0E1626; border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3); padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-                        <h2 style="color: #FFFFFF; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Kisan Rain Alert</h2>
-                    </div>
-                    <div style="background-color: rgba(7,11,20,0.85); border-left: 4px solid #38BDF8; padding: 14px 18px; border-radius: 6px; margin-bottom: 20px;">
-                        <span style="font-size: 13px; text-transform: uppercase; color: #38BDF8; letter-spacing: 0.05em; font-weight: bold;">Meteorological Alert</span>
-                        <h3 style="margin: 4px 0; color: #FFFFFF;">{alert.get('rainfall_category')} ({alert.get('precipitation_rate')} mm/h)</h3>
-                        <p style="margin: 4px 0 0; font-size: 14px; color: #E2E8F0;">{alert.get('alert_message')}</p>
-                    </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 22px;">
-                        <tr><td style="padding: 8px 0; color: #94A3B8;">Farm Plot:</td><td style="padding: 8px 0; font-weight: bold; color: #FFFFFF;">{farm.get('farm_name')}</td></tr>
-                        <tr><td style="padding: 8px 0; color: #94A3B8;">Location:</td><td style="padding: 8px 0; color: #FFFFFF;">{farm.get('village', 'Farm Location')}</td></tr>
-                        <tr><td style="padding: 8px 0; color: #94A3B8;">Rule Explanation:</td><td style="padding: 8px 0; color: #CBD5E1;">{alert.get('alert_reason')}</td></tr>
-                    </table>
-                    <div style="text-align: center; margin-top: 24px;">
-                        <a href="{radar_url}" style="background-color: #2563EB; color: #FFFFFF; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 999px; display: inline-block;">
-                            View Live Rain Radar →
-                        </a>
-                    </div>
-                    <p style="font-size: 12px; color: #64748B; text-align: center; margin-top: 28px;">
-                        Kisan Rain Alert • Location-Specific Early Warning System for Indian Farmers
-                    </p>
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #070B14; color: #E2E8F0; padding: 24px; margin: 0;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #0E1626; border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.3); padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                    <h2 style="color: #FFFFFF; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Kisan Rain Alert</h2>
                 </div>
-            </body>
-            </html>
-            """
+                <div style="background-color: rgba(7,11,20,0.85); border-left: 4px solid #38BDF8; padding: 14px 18px; border-radius: 6px; margin-bottom: 20px;">
+                    <span style="font-size: 13px; text-transform: uppercase; color: #38BDF8; letter-spacing: 0.05em; font-weight: bold;">Meteorological Alert</span>
+                    <h3 style="margin: 4px 0; color: #FFFFFF;">{alert.get('rainfall_category')} ({alert.get('precipitation_rate')} mm/h)</h3>
+                    <p style="margin: 4px 0 0; font-size: 14px; color: #E2E8F0;">{alert.get('alert_message')}</p>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 22px;">
+                    <tr><td style="padding: 8px 0; color: #94A3B8;">Farm Plot:</td><td style="padding: 8px 0; font-weight: bold; color: #FFFFFF;">{farm.get('farm_name')}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #94A3B8;">Location:</td><td style="padding: 8px 0; color: #FFFFFF;">{farm.get('village', 'Farm Location')}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #94A3B8;">Rule Explanation:</td><td style="padding: 8px 0; color: #CBD5E1;">{alert.get('alert_reason')}</td></tr>
+                </table>
+                <div style="text-align: center; margin-top: 24px;">
+                    <a href="{radar_url}" style="background-color: #2563EB; color: #FFFFFF; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 999px; display: inline-block;">
+                        View Live Rain Radar →
+                    </a>
+                </div>
+                <p style="font-size: 12px; color: #64748B; text-align: center; margin-top: 28px;">
+                    Kisan Rain Alert • Location-Specific Early Warning System for Indian Farmers
+                </p>
+            </div>
+        </body>
+        </html>
+        """
 
-            msg.attach(MIMEText(text_content, "plain"))
-            msg.attach(MIMEText(html_content, "html"))
+        # 1. Brevo HTTPS API (Port 443 - works reliably on Railway/Render)
+        brevo_error = None
+        if has_brevo:
+            try:
+                import requests
+                resp = requests.post(
+                    "https://api.brevo.com/v3/smtp/email",
+                    headers={
+                        "accept": "application/json",
+                        "api-key": brevo_key,
+                        "content-type": "application/json"
+                    },
+                    json={
+                        "sender": {"name": "Kisan Rain Alert", "email": sender_email},
+                        "to": [{"email": to_email}],
+                        "subject": subject,
+                        "htmlContent": html_content,
+                        "textContent": text_content
+                    },
+                    timeout=12
+                )
+                if resp.status_code in (200, 201, 202):
+                    res_data = resp.json() if resp.text else {}
+                    msg_id = res_data.get("messageId", "OK")
+                    log_entry["delivery_status"] = "delivered"
+                    log_entry["provider_message_id"] = f"BREVO-{msg_id}"
+                    Database.log_notification(log_entry)
+                    logger.info(f"Brevo HTTPS email sent to {to_email} (ID: {msg_id})")
+                    return "delivered"
+                brevo_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                logger.warning(f"Brevo HTTPS failed for {to_email}: {brevo_error}")
+            except Exception as e:
+                brevo_error = str(e)
+                logger.warning(f"Brevo HTTPS exception for {to_email}: {e}")
 
-            clean_password = (Config.SMTP_PASSWORD or "").replace(" ", "").strip()
-            with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=12) as server:
-                server.starttls()
-                server.login(Config.SMTP_EMAIL, clean_password)
-                server.send_message(msg)
+        # 2. Gmail SMTP Fallback (Port 587 STARTTLS)
+        if has_smtp:
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = subject
+                msg["From"] = f"Kisan Rain Alert <{Config.SMTP_EMAIL}>"
+                msg["To"] = to_email
+                msg.attach(MIMEText(text_content, "plain"))
+                msg.attach(MIMEText(html_content, "html"))
 
-            log_entry["delivery_status"] = "delivered"
-            log_entry["provider_message_id"] = f"SMTP-{int(hash(to_email)) & 0xffffffff:08x}"
-            Database.log_notification(log_entry)
-            logger.info(f"Gmail SMTP alert sent to {to_email}")
-            return "delivered"
-        except Exception as e:
-            logger.error(f"Gmail SMTP failed for {to_email}: {e}")
-            log_entry["delivery_status"] = "failed"
-            log_entry["error_message"] = str(e)
-            Database.log_notification(log_entry)
-            return f"failed: {e}"
+                clean_password = (Config.SMTP_PASSWORD or "").replace(" ", "").strip()
+                with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=12) as server:
+                    server.starttls()
+                    server.login(Config.SMTP_EMAIL, clean_password)
+                    server.send_message(msg)
+
+                log_entry["delivery_status"] = "delivered"
+                log_entry["provider_message_id"] = f"SMTP-{int(hash(to_email)) & 0xffffffff:08x}"
+                Database.log_notification(log_entry)
+                logger.info(f"Gmail SMTP alert sent to {to_email}")
+                return "delivered"
+            except Exception as e:
+                logger.error(f"Gmail SMTP failed for {to_email}: {e}")
+                err_msg = f"Brevo: {brevo_error}; SMTP: {e}" if brevo_error else str(e)
+                log_entry["delivery_status"] = "failed"
+                log_entry["error_message"] = err_msg
+                Database.log_notification(log_entry)
+                return f"failed: {err_msg}"
+
+        log_entry["delivery_status"] = "failed"
+        log_entry["error_message"] = brevo_error or "Email provider unavailable"
+        Database.log_notification(log_entry)
+        return f"failed: {log_entry['error_message']}"
 
     @classmethod
     def send_telegram(cls, alert: Dict[str, Any], farm: Dict[str, Any], user_id: Optional[str] = None) -> str:

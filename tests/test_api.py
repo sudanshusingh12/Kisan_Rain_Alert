@@ -161,4 +161,38 @@ def test_simulate_alert_without_smtp_email_no_nameerror(client, monkeypatch):
     assert res.status_code == 200
     assert "alert" in res.get_json()
 
+def test_brevo_email_dispatch_mocked(monkeypatch):
+    """Verify NotificationService sends HTTPS request to Brevo when BREVO_API_KEY is configured."""
+    import requests
+    from config import Config
+    from notification_service import NotificationService
+
+    captured = {}
+    class FakeResp:
+        status_code = 201
+        text = '{"messageId":"<brevo-test-123>"}'
+        def json(self):
+            return {"messageId": "<brevo-test-123>"}
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["json"] = json
+        return FakeResp()
+
+    monkeypatch.setattr(Config, "BREVO_API_KEY", "xkeysib-test-key")
+    monkeypatch.setattr(Config, "BREVO_SENDER_EMAIL", "sender@example.com")
+    monkeypatch.setattr(requests, "post", fake_post)
+
+    status = NotificationService.send_email(
+        to_email="farmer@example.com",
+        alert={"id": "a1", "rainfall_category": "Moderate Rain", "precipitation_rate": 4.8, "alert_message": "Rain!", "alert_reason": "Prob 85%"},
+        farm={"id": "f1", "farm_name": "Test Farm", "village": "Karnal"},
+        user_id="u1"
+    )
+    assert status == "delivered"
+    assert captured["url"] == "https://api.brevo.com/v3/smtp/email"
+    assert captured["headers"]["api-key"] == "xkeysib-test-key"
+    assert captured["json"]["to"] == [{"email": "farmer@example.com"}]
+
 

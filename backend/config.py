@@ -31,6 +31,10 @@ class Config:
     SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 
+    # Brevo Transactional Email API (HTTPS Port 443 - works on Railway/Render)
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+    BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "") or SMTP_EMAIL
+
     # Telegram Bot Alerts (100% Free Mobile Alerts)
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
